@@ -1,0 +1,101 @@
+# cs2-finestats-lite
+
+Standalone CS2 statistics for SwiftlyS2: **SQLite inside the plugin**, without a
+website, HTTP listener, backend, Docker service or external database. Version 1.0.3.
+
+Includes local player rankings, configurable scoring, bot/warmup filtering, combat
+and session counters, weapon/hitgroup statistics, English colored chat messages,
+public `!rank`/`rank`, private score/progress notices and optional offline country lookup.
+
+## Install
+
+Requires SwiftlyS2 **1.4.10** and its .NET 10 runtime. Download/build the ZIP for your
+OS (`linux-x64` or `win-x64`). Extract the included `finestats-lite` directory into
+`addons/swiftlys2/plugins/`. Include **all** DLLs and the native SQLite library from
+the ZIP; do not copy just the plugin DLL. Restart CS2 or load the plugin with SwiftlyS2.
+
+The plugin creates its configuration at
+`addons/swiftlys2/configs/plugins/finestats-lite/config.jsonc`, and its SQLite file at
+`addons/swiftlys2/data/finestats-lite/finestats-lite.db` (the framework plugin data
+directory). Keep this data directory outside plugin release replacements and make
+it writable by the game-server account. No API key or connection string is needed.
+Reload after changing configuration.
+
+The full finestats plugin is independent. Disable its chat commands/score messages before using Lite on the
+same game server: command names overlap. Existing registered commands are not taken
+over, and running both collectors produces two independent sets of statistics.
+For SwiftlyS2 1.4.9, build a compatibility package against that framework's assembly
+using the command below. See [deployment](docs/DEPLOYMENT.md) for installation steps.
+
+## Commands
+
+`!rank` (also bare `rank`) is public. Other replies and errors are private.
+
+| Command | Local result |
+|---|---|
+| `rank`, `skill`, `points`, `place` | Rank and points; aliases other than rank reply privately |
+| `top5`, `top10`, `top20` `[page]` | Ranked players on this server |
+| `next` | Up to three players immediately ahead of you |
+| `statsme`, `kpd`, `kdratio`, `kdeath`, `kills`, `kill`, `player_kills` | Profile and combat counters |
+| `session`, `session_data` | Exact current collector/session counters and observed time |
+| `weapons`, `weapon` `[page]` | Weapon kills, damage and separate fire/damage events |
+| `targets`, `target` `[page]` | Hitgroup observations and percentages |
+| `accuracy` | Explains why exact accuracy/misses cannot be inferred |
+| `servers`, `status` | This local server and its recorded observations |
+| `load` | Local profile; no cross-server aggregation |
+| `hlx_help`, `hlx_menu` | Chat help |
+
+SwiftlyS2's `sw_` console commands and configured chat prefixes also apply. Lists
+accept page numbers, not weapon-name filters. Default cooldown: three seconds.
+
+## Configuration and backups
+
+All settings and all 72 message defaults are in [resources/config.jsonc](resources/config.jsonc).
+See [configuration and storage](docs/CONFIGURATION.md) for options, backup/restore
+and behavior. Example:
+
+```json
+"RankingProgressNotificationsEnabled": true,
+"Messages": {
+  "RankingProgress": "You still need [green]{remaining}[/] kills to start ranking ([yellow]{kills}[/]/[yellow]{required}[/])."
+}
+```
+
+Only counted kills advance qualification. `Ranking.ExcludeBots=false` includes bot
+encounters for human counters and rating; bots use baseline strength and never gain
+permanent ratings. The default excludes bots. Ranking changes affect future events.
+
+## Build and test
+
+Für den Einstieg in den Quellcode: [Code verständlich erklärt (Deutsch)](docs/CODE-GUIDE.md).
+
+Build from the root of this repository with the .NET 10 SDK. Required collector,
+event, helper and message code is included under `Shared/`; no sibling project is
+needed. This repository contains only the Lite plugin and its tests/documentation.
+
+```powershell
+dotnet run --project tests/finestats-lite.Tests.csproj -c Release
+dotnet publish finestats-lite.csproj -c Release -r linux-x64 --self-contained false
+dotnet publish finestats-lite.csproj -c Release -r win-x64 --self-contained false
+```
+
+Output: `build/finestats-lite-linux-x64-swiftly1.4.10.zip` or `build/finestats-lite-win-x64-swiftly1.4.10.zip`.
+The tests use temporary real SQLite databases. They do not connect to production.
+Native game callbacks and chat appearance still require a CS2 smoke test.
+
+## Scope
+
+This release supports one server per database. It has no PostgreSQL import,
+historical raw-event replay, web UI, HTTP service, centralized ranking or automatic
+cross-server sync. Existing full-version data is not migrated. Unknown data stays
+unknown; observed time is not exact connection time. An abrupt process crash can
+lose events still in the bounded memory queue, but committed batches are atomic.
+
+For an exact installed framework API compatibility build:
+
+```powershell
+dotnet publish finestats-lite.csproj -c Release -r linux-x64 --self-contained false -p:SwiftlyAssemblyPath=/absolute/path/SwiftlyS2.CS2.dll -p:PackageVariant=swiftly1.4.9
+```
+
+Only use the variant label matching the supplied assembly. See
+[verification](docs/VERIFICATION.md) for test coverage and remaining native smoke checks.

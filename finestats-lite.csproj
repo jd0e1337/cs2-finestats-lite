@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AssemblyName>finestats-lite</AssemblyName>
+    <Version>1.0.3</Version>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">linux-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <PackageVariant Condition="'$(PackageVariant)' == ''">swiftly1.4.10</PackageVariant>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <PublishDir>$(MSBuildThisFileDirectory)build/$(RuntimeIdentifier)-$(PackageVariant)/finestats-lite/</PublishDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="SwiftlyS2.CS2" Version="1.4.10" ExcludeAssets="runtime" PrivateAssets="all" Condition="'$(SwiftlyAssemblyPath)' == ''" />
+    <Reference Include="SwiftlyS2.CS2" HintPath="$(SwiftlyAssemblyPath)" Private="false" Condition="'$(SwiftlyAssemblyPath)' != ''" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
+    <Compile Remove="tests/**/*.cs;build/**/*.cs" />
+    <Content Include="resources/config.jsonc" Link="resources/templates/config.jsonc" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="README.md;docs/*.md" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <Target Name="ZipPlugin" AfterTargets="Publish">
+    <ZipDirectory SourceDirectory="$(MSBuildThisFileDirectory)build/$(RuntimeIdentifier)-$(PackageVariant)" DestinationFile="$(MSBuildThisFileDirectory)build/finestats-lite-$(RuntimeIdentifier)-$(PackageVariant).zip" Overwrite="true" />
+  </Target>
+</Project>

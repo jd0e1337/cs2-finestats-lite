@@ -1,0 +1,17 @@
+bin/
+obj/
+build/
+tests/bin/
+tests/obj/
+*.db
+*.db-wal
+*.db-shm
+.vs/
+.vscode/
+*.user
+*.suo
+*.zip
+*.log
+.env
+.env.*
+backups/
