@@ -48,6 +48,30 @@ async Task<JsonElement> Profile(LiteStore store,PlayerIdentity player) => (await
 async Task<long> Kills(LiteStore store,PlayerIdentity player) => (await Profile(store,player)).GetProperty("kills").GetInt64();
 try
 {
+    // A kill can be the first observed event, e.g. after loading mid-session.
+    var firstKillConfig = config with { Ranking = config.Ranking with { ExcludeBots = true, MinimumKillsForLeaderboard = 10 } };
+    var firstKillStore = new LiteStore(Path.Combine(directory, "first-kill.db"), firstKillConfig);
+    var firstHumanKill = Kill(v: bob);
+    var firstHumanReceipts = await firstKillStore.AppendAsync([firstHumanKill], default);
+    var firstHumanReceipt = firstHumanReceipts.Single(r => r.Reason == "kill");
+    Check(await Kills(firstKillStore, alice) == 1 && firstHumanReceipt.KillsAfter == 1,
+        "first human kill counts without prior session or authentication events");
+    Check(ScoreReceiptFilter.ProgressMessage(firstHumanReceipt, firstKillConfig).Contains("9")
+        && ScoreReceiptFilter.Message(firstHumanReceipt, firstKillConfig) == "",
+        "first kill shows nine remaining while its point notice stays hidden");
+    var firstEnvelope = JsonSerializer.SerializeToElement(new { scoreNotices = firstHumanReceipts });
+    Check(new ScoreReceiptFilter(firstKillConfig).Read(firstEnvelope, [firstHumanKill], firstHumanKill.Timestamp)
+        .Any(r => r.Reason == "kill" && r.KillsAfter == 1), "first kill progress survives delivery filtering");
+    using (var firstCommands = new StatsCommandClient(firstKillConfig, firstKillStore))
+    {
+        var lines = await firstCommands.Execute("statsme", [], new CommandPlayer(alice.Steamid!, alice.SessionId, collector), default);
+        Check(lines.Any(line => ChatColors.Plain(line).Contains("1/0/0")), "statsme includes the first stored kill");
+    }
+    var unauthenticated = alice with { Steamid = null, Authenticated = false };
+    var lateAuthStore = new LiteStore(Path.Combine(directory, "first-kill-late-auth.db"), firstKillConfig);
+    await lateAuthStore.AppendAsync([Kill(a: unauthenticated, v: bob)], default);
+    await lateAuthStore.AppendAsync([Event("player_authenticated", new PlayerEvent(alice, 1, "auth"))], default);
+    Check(await Kills(lateAuthStore, alice) == 1, "first unauthenticated kill survives later Steam identity merge");
     var database=Path.Combine(directory,"stats.db");var store=new LiteStore(database,config);
     var start=Event("session_start",new PlayerEvent(alice,DateTimeOffset.UtcNow.AddMinutes(-1).ToUnixTimeMilliseconds(),"connect"));
     await store.AppendAsync([start],default);

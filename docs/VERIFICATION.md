@@ -3,7 +3,7 @@
 The standalone repository was checked on Windows with the .NET 10 SDK:
 
 - Release plugin build completed successfully.
-- All 211 checks passed against temporary real SQLite databases.
+- All 216 checks passed against temporary real SQLite databases.
 - The tests do not connect to a production game server.
 
 Coverage includes local chat commands, scoring and qualification, bot/warmup
@@ -43,3 +43,12 @@ a CS2 smoke test.
 Kill point notices respect MinimumKillsForLeaderboard. Tests cover kills 1 through
 11 with a minimum of 10, retained scoring and progress, delivery with progress
 disabled, and immediate notices with a zero minimum.
+
+## 1.0.6 first-kill investigation
+
+Five checks verify a first kill without previous session events, its progress
+message and delivery filter, statsme output, and late authentication merging.
+The collector now reads warmup from current game rules for each event instead
+of relying on a round-start snapshot. Native map/server startup and warmup
+transitions still require in-game verification; the reported missing first
+message was not reproduced on a live server during this investigation.

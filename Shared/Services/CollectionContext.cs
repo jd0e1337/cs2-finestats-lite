@@ -28,6 +28,11 @@ public sealed class CollectionContext(ISwiftlyCore core, string serverId, EventQ
 
     public void Emit(string type, EventData data)
     {
+        // Round-start can precede the warmup transition, and loading mid-round
+        // may miss it entirely. Classify this event from the current game rules.
+        // Unknown state stays unknown so ExcludeWarmup continues to fail closed.
+        try { Warmup = core.EntitySystem.GetGameRules()?.WarmupPeriod; }
+        catch (InvalidOperationException) { Warmup = null; }
         int? tick;
         try { tick = core.Engine.GlobalVars.TickCount; }
         catch (InvalidOperationException) { tick = null; }
