@@ -67,7 +67,7 @@ permanent ratings. The default excludes bots. Ranking changes affect future even
 
 ## Build and test
 
-Für den Einstieg in den Quellcode: [Code verständlich erklärt (Deutsch)](docs/CODE-GUIDE.md).
+For an introduction to the source code, read the [code guide](docs/CODE-GUIDE.md).
 
 Build from the root of this repository with the .NET 10 SDK. Required collector,
 event, helper and message code is included under `Shared/`; no sibling project is

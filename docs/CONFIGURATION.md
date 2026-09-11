@@ -62,6 +62,36 @@ sessions stay separate. Country lookup happens locally; IP addresses are never
 persisted. DB-IP database files are not included; preserve DB-IP attribution/license
 when obtaining and using Country Lite data.
 
+### Setting up country lookup
+
+The current loader supports **DB-IP Country Lite CSV** (`.csv` or `.csv.gz`).
+MaxMind GeoLite2 `.mmdb` files and MaxMind's CSV layout are not supported.
+No country database is bundled in this repository or the plugin package, and
+the plugin does not download or update one automatically. GeoIP is disabled
+in the default configuration.
+
+1. Obtain the CSV download from [DB-IP Country Lite](https://db-ip.com/db/download/ip-to-country-lite).
+   Retain the provider's attribution and license information.
+2. Store it outside the plugin release directory, in a location readable by the
+   game-server account. The file must contain three columns without a header:
+   `ip_start,ip_end,country`, with a two-letter uppercase country code.
+3. Set the following options in the plugin configuration, replacing the example
+   absolute path with the location of your file:
+
+   ```json
+   "GeoIpEnabled": true,
+   "GeoIpCountryCsvPath": "/path/to/geoip/dbip-country-lite.csv.gz"
+   ```
+
+4. Reload the plugin. The database is loaded into memory in the background.
+   Reload again after replacing the file with an updated database.
+
+If the file cannot be loaded or an address has no usable match, the connection
+message uses the configured `UnknownCountry` text (default: `Unknown country`).
+Statistics remain available. Only country results are persisted, not player IP
+addresses. A missing or relative path with GeoIP enabled is a configuration
+validation error and prevents plugin startup.
+
 Schema version 1 is created transactionally and marked with an application ID.
 Foreign databases and unsupported newer versions are rejected. Future migrations
 must increment the version; never replace the database with a new empty file during
