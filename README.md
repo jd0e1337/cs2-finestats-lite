@@ -7,6 +7,23 @@ Includes local player rankings, configurable scoring, bot/warmup filtering, comb
 and session counters, weapon/hitgroup statistics, English colored chat messages,
 public `!rank`/`rank`, private score/progress notices and optional offline country lookup.
 
+## Screenshots
+
+In-game examples. Point changes depend on your ranking configuration and player ratings.
+
+**Player statistics and rank:** points, kills/deaths/assists, K/D ratio, headshot
+percentage, damage, and playtime.
+
+![Player statistics and public rank message in CS2 chat](docs/screenshots/player-statistics.jpg)
+
+**Kill and MVP rewards:** chat notices for regular kills, headshots, and MVP awards.
+
+![Kill, headshot, and MVP point rewards in CS2 chat](docs/screenshots/kill-and-mvp-points.jpg)
+
+**Death penalty:** points deducted and the updated total.
+
+![Death penalty and remaining points in CS2 chat](docs/screenshots/death-penalty.jpg)
+
 ## Install
 
 Requires SwiftlyS2 **1.4.10** and its .NET 10 runtime. Download/build the ZIP for your
