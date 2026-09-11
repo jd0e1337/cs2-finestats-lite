@@ -65,6 +65,50 @@ Only counted kills advance qualification. `Ranking.ExcludeBots=false` includes b
 encounters for human counters and rating; bots use baseline strength and never gain
 permanent ratings. The default excludes bots. Ranking changes affect future events.
 
+## Country lookup (GeoIP)
+
+Country lookup is optional and disabled by default. Download the **CSV** version
+of [DB-IP Country Lite](https://db-ip.com/db/download/ip-to-country-lite).
+The plugin supports `.csv` and compressed `.csv.gz` files; you do not need to
+extract the gzip download. MaxMind GeoLite2 databases and `.mmdb` files are not
+supported. No country database is included with the plugin.
+
+1. Download the CSV database from the link above and retain its attribution and
+   license information: **IP Geolocation by [DB-IP](https://db-ip.com)**.
+2. Place the file in a persistent directory readable by the game-server account,
+   outside the plugin release directory. You can rename it to
+   `dbip-country-lite.csv.gz` to keep the configured path stable across updates.
+3. Open `addons/swiftlys2/configs/plugins/finestats-lite/config.jsonc` and update
+   the existing settings below. Merge these values into your configuration;
+   do not replace the entire file or add duplicate keys.
+
+   ```json
+   {
+     "GeoIpEnabled": true,
+     "GeoIpCountryCsvPath": "/path/to/geoip/dbip-country-lite.csv.gz",
+     "ConnectMessagesEnabled": true,
+     "PublicConnectMessages": true,
+     "ConnectCountryNames": true
+   }
+   ```
+
+   Replace the example path with the **absolute path** on your server. On Windows,
+   use a path such as `C:/CS2Data/geoip/dbip-country-lite.csv.gz`.
+4. Reload the plugin or restart the server. The database loads in the background.
+   Check the server log for loading warnings, then reconnect a player to check
+   the country in the connection announcement. Players already connected when
+   the plugin loads do not receive a new announcement.
+
+`ConnectCountryNames=true` displays the English country name and code; set it to
+`false` to display only the code. `PublicConnectMessages=false` makes the connection
+announcement private. If no country can be resolved, the default text is
+`Unknown country`. Player IP addresses are not stored in the statistics database.
+
+The plugin does not download or update the country database automatically. To
+update it, replace the file at the configured path and reload the plugin. To turn
+lookup off, set `GeoIpEnabled` to `false` and reload. See the
+[configuration guide](docs/CONFIGURATION.md#setting-up-country-lookup) for details.
+
 ## Build and test
 
 For an introduction to the source code, read the [code guide](docs/CODE-GUIDE.md).
