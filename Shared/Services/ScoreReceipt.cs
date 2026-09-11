@@ -49,7 +49,16 @@ public sealed class ScoreReceiptFilter(StatsConfig? config = null)
         return messages.Get(r.Delta > 0 ? "ScoreReceived" : "ScoreLost", ("amount", messages.Number(Math.Abs(r.Delta))),
             ("points", messages.Number(r.PointsAfter)), ("reason", messages.Get("Reason_" + r.Reason)));
     }
-    private static bool ShowScore(ScoreReceipt r, StatsConfig? config) => r.Delta != 0 && (config?.ScoreNotificationsEnabled ?? true) && (config is null || config.ScoreNotificationReasons.Contains(r.Reason));
+    private static bool ShowScore(ScoreReceipt r, StatsConfig? config)
+    {
+        if (r.Delta == 0 || !(config?.ScoreNotificationsEnabled ?? true)
+            || config is not null && !config.ScoreNotificationReasons.Contains(r.Reason)) return false;
+
+        // Kill points are still recorded before qualification, but their chat
+        // notice starts with the qualifying kill. Progress notices remain separate.
+        int minimumKills = config?.Ranking.MinimumKillsForLeaderboard ?? r.MinimumKills ?? 0;
+        return r.Reason != "kill" || minimumKills <= 0 || r.KillsAfter >= minimumKills;
+    }
     private static bool ShowProgress(ScoreReceipt r, StatsConfig? config) => (config?.RankingProgressNotificationsEnabled ?? true)
         && r.Reason == "kill" && r.MinimumKills is > 0 && r.KillsAfter is > 0 && r.KillsAfter <= r.MinimumKills;
     public static string ProgressMessage(ScoreReceipt r, StatsConfig? config = null)

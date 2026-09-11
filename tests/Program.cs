@@ -163,17 +163,37 @@ try
     using(var client=new SqliteStatsClient(config,store,_=>throw new IOException("callback")))
         Check((await client.SendAsync([Kill()],default)).Accepted && await Kills(store,alice)==rollbackBefore+1,"failed chat callback cannot retry committed SQLite batch");
     var whole = new LiteStore(Path.Combine(directory,"whole.db"),config);
+    var qualificationConfig = config with { Ranking = config.Ranking with { MinimumKillsForLeaderboard = 10 } };
+    var qualificationStore = new LiteStore(Path.Combine(directory, "qualification.db"), qualificationConfig);
+    for (int killNumber = 1; killNumber <= 11; killNumber++)
+    {
+        var killEvent = Kill();
+        var receipt = (await qualificationStore.AppendAsync([killEvent], default)).Single();
+        Check(receipt.Delta > 0 && receipt.KillsAfter == killNumber, $"kill {killNumber} still records points");
+        Check((ScoreReceiptFilter.Message(receipt, qualificationConfig).Length > 0) == (killNumber >= 10),
+            $"kill {killNumber} score notice respects qualification");
+        Check((ScoreReceiptFilter.ProgressMessage(receipt, qualificationConfig).Length > 0) == (killNumber <= 10),
+            $"kill {killNumber} progress notice remains available");
+        var silentConfig = qualificationConfig with { RankingProgressNotificationsEnabled = false };
+        var envelope = JsonSerializer.SerializeToElement(new { scoreNotices = new[] { receipt } });
+        var filtered = new ScoreReceiptFilter(silentConfig).Read(envelope, [killEvent], killEvent.Timestamp);
+        Check(filtered.Length == (killNumber >= 10 ? 1 : 0), $"kill {killNumber} delivery filter respects qualification");
+        Check(ScoreReceiptFilter.Message(receipt, qualificationConfig with
+        {
+            Ranking = qualificationConfig.Ranking with { MinimumKillsForLeaderboard = 0 }
+        }).Length > 0, "zero minimum permits immediate kill notices");
+    }
     var normal = Kill(v:bot with {Name="[red]Opponent {points}[/]"});
     normal=normal with {Data=((KillEvent)normal.Data) with {Headshot=false}};
     var normalReceipt=(await whole.AppendAsync([normal],default)).Single();
     Check(normalReceipt.Delta==5 && normalReceipt.PointsAfter==1005 && normalReceipt.Headshot==false,"normal kill books five whole points at equal strength");
-    Check(ChatColors.Plain(ScoreReceiptFilter.Message(normalReceipt,config))=="Received 5 Points for Killing Opponent points (1005)","normal kill message sanitizes opponent without expanding tokens");
+    Check(ChatColors.Plain(ScoreReceiptFilter.Message(normalReceipt with { KillsAfter = 3 },config))=="Received 5 Points for Killing Opponent points (1005)","normal kill message sanitizes opponent without expanding tokens");
     var headshotEvent=Kill();var headshotReceipt=(await whole.AppendAsync([headshotEvent],default)).Single();
     Check(headshotReceipt.Delta==7 && headshotReceipt.PointsAfter==1012 && headshotReceipt.Headshot==true,"headshot includes two-point bonus and books rounded total");
-    Check(ChatColors.Plain(ScoreReceiptFilter.Message(headshotReceipt,config))=="Received 7 Points for Killing Bot with Headshot (1012)","headshot uses exactly one dedicated score message");
+    Check(ChatColors.Plain(ScoreReceiptFilter.Message(headshotReceipt with { KillsAfter = 3 },config))=="Received 7 Points for Killing Bot with Headshot (1012)","headshot uses exactly one dedicated score message");
     Check((await new LiteStore(Path.Combine(directory,"whole.db"),config).AppendAsync([headshotEvent],default)).Single()==headshotReceipt,"kill opponent and headshot receipt survive restart and retry");
     var custom=config with {Messages=new() {["ScoreKill"]="+{amount}: {opponent}",["ScoreHeadshotKill"]="HS +{amount}: {opponent}"}};custom.Validate();
-    Check(ScoreReceiptFilter.Message(headshotReceipt,custom)=="HS +7: Bot","kill templates remain configurable");
+    Check(ScoreReceiptFilter.Message(headshotReceipt with { KillsAfter = 3 },custom)=="HS +7: Bot","kill templates remain configurable");
     var tiePolicy=config with {Ranking=config.Ranking with {KillBase=5.5,DeathBase=3.5}};
     var ties=new LiteStore(Path.Combine(directory,"ties.db"),tiePolicy);
     var tieEvent=normal with {EventId=Guid.NewGuid(),Data=((KillEvent)normal.Data) with {Victim=bob}};
@@ -212,7 +232,7 @@ try
     var profileLines=await timeCommands.Execute("statsme",[],timeIdentity,default);
     Check(ChatColors.Plain(sessionLines[1])=="Playtime: 1 hour 1 minute","session renders live playtime");
     Check(ChatColors.Plain(profileLines[^1]).Contains("Playtime: 1 day 2 hours 4 minutes"),"profile renders cumulative playtime");
-    Check(ScoreReceiptFilter.Message(headshotReceipt,config).EndsWith("[green](1012)[/]"),"total points use the same green and parentheses");
+    Check(ScoreReceiptFilter.Message(headshotReceipt with { KillsAfter = 3 },config).EndsWith("[green](1012)[/]"),"total points use the same green and parentheses");
     Console.WriteLine($"{checks} checks passed against real SQLite.");
 }
 finally { SqliteConnection.ClearAllPools(); Directory.Delete(directory,true); }

@@ -1,7 +1,7 @@
 # cs2-finestats-lite
 
 Standalone CS2 statistics for SwiftlyS2: **SQLite inside the plugin**, without a
-website, HTTP listener, backend, Docker service or external database. Version 1.0.4.
+website, HTTP listener, backend, Docker service or external database. Version 1.0.5.
 
 Includes local player rankings, configurable scoring, bot/warmup filtering, combat
 and session counters, weapon/hitgroup statistics, English colored chat messages,
@@ -81,7 +81,9 @@ and behavior. Example:
 }
 ```
 
-Only counted kills advance qualification. `Ranking.ExcludeBots=false` includes bot
+Kill point notices start with the kill that reaches `Ranking.MinimumKillsForLeaderboard`.
+Before that, points are saved silently and ranking progress notices remain available.
+Other score reasons are unaffected. Only counted kills advance qualification. `Ranking.ExcludeBots=false` includes bot
 encounters for human counters and rating; bots use baseline strength and never gain
 permanent ratings. The default excludes bots. Ranking changes affect future events.
 

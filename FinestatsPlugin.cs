@@ -9,7 +9,7 @@ using SwiftlyS2.Shared.Plugins;
 
 namespace Finestats;
 
-[PluginMetadata(Id = "finestats-lite", Version = "1.0.4", Name = "finestats-lite", Author = "finestats-lite", Description = "Standalone SQLite CS2 statistics")]
+[PluginMetadata(Id = "finestats-lite", Version = "1.0.5", Name = "finestats-lite", Author = "finestats-lite", Description = "Standalone SQLite CS2 statistics")]
 public sealed class FinestatsPlugin(ISwiftlyCore core) : BasePlugin(core)
 {
     private Diagnostics? _log;
