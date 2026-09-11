@@ -3,7 +3,7 @@
 The standalone repository was checked on Windows with the .NET 10 SDK:
 
 - Release plugin build completed successfully.
-- All 98 checks passed against temporary real SQLite databases.
+- All 156 checks passed against temporary real SQLite databases.
 - The tests do not connect to a production game server.
 
 Coverage includes local chat commands, scoring and qualification, bot/warmup
@@ -30,3 +30,10 @@ On a test CS2 server, check plugin loading, configuration/database creation,
 rank and detail commands, combat scoring, connection messages, reconnects,
 map changes, hot reload and persistence after restart. Confirm that delayed
 replies cannot reach a different player after a slot is reused.
+
+## 1.0.4 public statsme replies
+
+Successful statsme replies are public regardless of PublicRankReplies. Regression
+checks cover all command names with that option enabled and disabled, plus private
+argument errors and missing-profile replies. Native rendered chat still requires
+a CS2 smoke test.

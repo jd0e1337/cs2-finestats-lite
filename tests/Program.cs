@@ -87,6 +87,24 @@ try
         var lines=await commands.Execute(command,[],who,default);
         Check(lines.Length>0 && lines.All(x=>!x.Contains("{remaining}")),"local command "+command);
     }
+    foreach (bool publicRank in new[] { true, false })
+    {
+        using var visibilityCommands = new StatsCommandClient(config with { PublicRankReplies = publicRank }, store);
+        foreach (var command in StatsCommandClient.Names)
+        {
+            bool publicReply = false;
+            await visibilityCommands.Execute(command, [], who, default, () => publicReply = true);
+            Check(publicReply == (command == "statsme" || command == "rank" && publicRank),
+                $"{command} visibility with PublicRankReplies={publicRank}");
+        }
+
+        bool invalidPublic = false;
+        await visibilityCommands.Execute("statsme", ["unexpected"], who, default, () => invalidPublic = true);
+        Check(!invalidPublic, "statsme argument errors stay private");
+        bool missingPublic = false;
+        await visibilityCommands.Execute("statsme", [], who with { Steamid = "76561198000009999" }, default, () => missingPublic = true);
+        Check(!missingPublic, "statsme missing profile stays private");
+    }
     var session=(await store.ReadAsync($"players/{alice.Steamid}/sessions?session={alice.SessionId}&collector={collector}",default))!.Value;
     Check(session.GetProperty("items")[0].GetProperty("counters").GetProperty("kills").GetInt64()==3,"exact session counters independent of merged historical sessions");
     var missing=(await store.ReadAsync($"players/{alice.Steamid}/sessions?session=other&collector={collector}",default))!.Value;

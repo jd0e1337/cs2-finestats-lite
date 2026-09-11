@@ -41,7 +41,7 @@ public sealed class StatsCommandClient : IDisposable
     private string N(double? v) => _messages.Number(v);
     private string N(JsonElement row, string key, bool counter = false) => N(Value(row, key, counter));
     private Task<JsonElement?> Read(string path, CancellationToken ct) => _store.ReadAsync(path, ct);
-    public async Task<string[]> Execute(string command, string[] args, CommandPlayer player, CancellationToken ct, Action? rankReady = null)
+    public async Task<string[]> Execute(string command, string[] args, CommandPlayer player, CancellationToken ct, Action? publicReplyReady = null)
     {
         if (command is "hlx_menu" or "hlx_help")
             return[T("HelpCommands"), T("HelpLists"), T("HelpObservations", ("page_size", _config.CommandPageSize))];
@@ -157,10 +157,13 @@ public sealed class StatsCommandClient : IDisposable
         var summary = T("RankSummary", ("scope", command == "load" ? T("ScopeAll") : T("ScopeServer")), ("rank", rank), ("points", N(data, "points")));
         if (command is "rank" or "skill" or "points" or "place")
         {
-            if (command == "rank" && Value(data, "points")is not null)
-                rankReady?.Invoke();
+            if (command == "rank" && _config.PublicRankReplies && Value(data, "points")is not null)
+                publicReplyReady?.Invoke();
             return[T("RankReply", ("name", Text(data, "name")), ("summary", summary))];
         }
+
+        if (command == "statsme" && Value(data, "points") is not null)
+            publicReplyReady?.Invoke();
 
         return[summary, T("ProfileCombat", ("kills", N(data, "kills")), ("deaths", N(data, "deaths")), ("assists", N(data, "assists")), ("kd", N(data, "kd")), ("percentage", N(data, "headshot_percentage"))), T("ProfilePlaytime", ("damage", N(data, "damage", true)), ("hits", N(data, "hits", true)), ("duration", PlaytimeFormatter.Format(Value(data, "playtime_seconds"))))];
     }

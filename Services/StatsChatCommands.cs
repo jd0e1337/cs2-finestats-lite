@@ -111,7 +111,7 @@ public sealed class StatsChatCommands : IDisposable
             bool publicReply = false;
             try
             {
-                lines = await _client.Execute(command, arguments, snapshot, _stop.Token, () => publicReply = _config.PublicRankReplies).ConfigureAwait(false);
+                lines = await _client.Execute(command, arguments, snapshot, _stop.Token, () => publicReply = true).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {

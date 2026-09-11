@@ -1,7 +1,7 @@
 # cs2-finestats-lite
 
 Standalone CS2 statistics for SwiftlyS2: **SQLite inside the plugin**, without a
-website, HTTP listener, backend, Docker service or external database. Version 1.0.3.
+website, HTTP listener, backend, Docker service or external database. Version 1.0.4.
 
 Includes local player rankings, configurable scoring, bot/warmup filtering, combat
 and session counters, weapon/hitgroup statistics, English colored chat messages,
@@ -46,14 +46,17 @@ using the command below. See [deployment](docs/DEPLOYMENT.md) for installation s
 
 ## Commands
 
-`!rank` (also bare `rank`) is public. Other replies and errors are private.
+`!rank` (also bare `rank`) and `!statsme` (also bare `statsme`) are public.
+`PublicRankReplies` controls only `rank`; `statsme` replies are always public.
+Other replies and errors are private.
 
 | Command | Local result |
 |---|---|
 | `rank`, `skill`, `points`, `place` | Rank and points; aliases other than rank reply privately |
 | `top5`, `top10`, `top20` `[page]` | Ranked players on this server |
 | `next` | Up to three players immediately ahead of you |
-| `statsme`, `kpd`, `kdratio`, `kdeath`, `kills`, `kill`, `player_kills` | Profile and combat counters |
+| `statsme` | Public profile and combat counters |
+| `kpd`, `kdratio`, `kdeath`, `kills`, `kill`, `player_kills` | Private profile and combat counters |
 | `session`, `session_data` | Exact current collector/session counters and observed time |
 | `weapons`, `weapon` `[page]` | Weapon kills, damage and separate fire/damage events |
 | `targets`, `target` `[page]` | Hitgroup observations and percentages |
