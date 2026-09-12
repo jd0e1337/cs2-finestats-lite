@@ -3,7 +3,7 @@
 The standalone repository was checked on Windows with the .NET 10 SDK:
 
 - Release plugin build completed successfully.
-- All 221 checks passed against temporary real SQLite databases.
+- All 241 checks passed against temporary real SQLite databases.
 - The tests do not connect to a production game server.
 
 Coverage includes local chat commands, scoring and qualification, bot/warmup
@@ -60,3 +60,13 @@ Pending bootstrap work is cancelled on map/plugin unload and superseded by newer
 map loads. Five regression checks cover deferred execution, cancellation, rapid
 map changes and reload. Lifecycle/session events no longer refresh native game
 rules during teardown. Live map-change validation is still required.
+
+## 1.0.8 map lifecycle isolation
+
+Lifecycle and session events never read native globals. A shared map generation
+gates game callbacks and invalidates queued score, connection and command replies
+before any player access. Disconnects use managed identities only. Player discovery
+is lazy through ready/auth/game callbacks; map/plugin load no longer enumerates
+players. Tests exercise the real lifecycle emitter with no available engine and
+cover map activation, stale work and unload. Native validation is reported in the
+release notes after deployment testing.

@@ -45,6 +45,7 @@ public sealed class StatsChatCommands : IDisposable
                 continue;
             _commands.Add(_core.Command.RegisterCommand(name, c =>
             {
+                if (!_context.World.IsReady) return;
                 if (!c.IsSentByPlayer || c.Sender is null)
                 {
                     var message = _messages.Get("PlayerOnly");
@@ -73,7 +74,7 @@ public sealed class StatsChatCommands : IDisposable
 
     private void Begin(int slot, string command, string[] args)
     {
-        if (Volatile.Read(ref _disposed) != 0 || slot is < 0 or > 255)
+        if (!_context.World.IsReady || Volatile.Read(ref _disposed) != 0 || slot is < 0 or > 255)
             return;
         var player = _core.PlayerManager.GetPlayer(slot);
         if (player is null || player.IsFakeClient)
@@ -103,6 +104,7 @@ public sealed class StatsChatCommands : IDisposable
         _pending[slot] = request;
         _last[slot] = (native, now);
         var snapshot = new CommandPlayer(steam, identity.SessionId, _context.CollectorId);
+        long mapGeneration = _context.World.Generation;
         var arguments = args.ToArray();
         // No IPlayer/entity or ICommandContext leaves this callback.
         _ = Task.Run(async () =>
@@ -136,7 +138,7 @@ public sealed class StatsChatCommands : IDisposable
                 {
                     try
                     {
-                        if (Volatile.Read(ref _disposed) != 0 || !_pending.TryGetValue(slot, out var active) || active != request)
+                        if (!_context.World.IsCurrent(mapGeneration) || Volatile.Read(ref _disposed) != 0 || !_pending.TryGetValue(slot, out var active) || active != request)
                             return;
                         _pending.TryRemove(slot, out _);
                         var current = _core.PlayerManager.GetPlayer(slot);
@@ -167,6 +169,12 @@ public sealed class StatsChatCommands : IDisposable
         var message = _messages.Get(key);
         if (message.Length > 0)
             player.SendChat(StatsCommandClient.ChatLine(message, _config));
+    }
+
+    public void ResetForMap()
+    {
+        _pending.Clear();
+        _last.Clear();
     }
 
     public void Dispose()

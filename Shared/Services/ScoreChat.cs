@@ -9,11 +9,12 @@ public sealed class ScoreChat(ISwiftlyCore core, PlayerCollector players, Guid c
     private int _disposed;
     public void Deliver(ScoreReceipt[] receipts)
     {
-        if (Volatile.Read(ref _disposed) != 0) return;
+        if (!players.World.IsReady || Volatile.Read(ref _disposed) != 0) return;
+        long mapGeneration = players.World.Generation;
         long scheduledAt = Environment.TickCount64;
         core.Scheduler.NextWorldUpdate(() =>
         {
-            if (Volatile.Read(ref _disposed) != 0 || Environment.TickCount64 - scheduledAt > config.ScoreNotificationQueueMaxAgeSeconds * 1000L) return;
+            if (!players.World.IsCurrent(mapGeneration) || Volatile.Read(ref _disposed) != 0 || Environment.TickCount64 - scheduledAt > config.ScoreNotificationQueueMaxAgeSeconds * 1000L) return;
             foreach (var player in core.PlayerManager.GetAllPlayers())
             {
                 try

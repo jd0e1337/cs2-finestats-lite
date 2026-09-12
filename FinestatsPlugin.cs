@@ -9,7 +9,7 @@ using SwiftlyS2.Shared.Plugins;
 
 namespace Finestats;
 
-[PluginMetadata(Id = "finestats-lite", Version = "1.0.7", Name = "finestats-lite", Author = "finestats-lite", Description = "Standalone SQLite CS2 statistics")]
+[PluginMetadata(Id = "finestats-lite", Version = "1.0.8", Name = "finestats-lite", Author = "finestats-lite", Description = "Standalone SQLite CS2 statistics")]
 public sealed class FinestatsPlugin(ISwiftlyCore core) : BasePlugin(core)
 {
     private Diagnostics? _log;
@@ -40,17 +40,13 @@ public sealed class FinestatsPlugin(ISwiftlyCore core) : BasePlugin(core)
             _log = new Diagnostics(message => Core.Logger.LogWarning("{Message}", message), config.LogDebugEvents ? message => Core.Logger.LogInformation("{Message}", message) : null, config.WarningIntervalSeconds);
             _queue = new EventQueue(config.QueueCapacity);
             _context = new CollectionContext(Core, config.ServerId, _queue, _log);
-            // A hot reload cannot reconstruct a round/session start it never observed.
-            try
-            {
-                _context.SetMap(Core.Engine.GlobalVars.MapName.Value);
-            }
-            catch (InvalidOperationException)
-            {
-                _context.SetMap(null);
-            }
-
-            _hooks = new GameEventSubscriptions(Core, _log);
+            // Map names arrive through lifecycle callbacks. A hot reload may
+            // observe the current name later, once the world is active.
+            _context.SetMap(null);
+            Core.Event.OnMapLoad += MapLoaded;
+            Core.Event.OnMapUnload += MapUnloaded;
+            _mapSubscribed = true;
+            _hooks = new GameEventSubscriptions(Core, _log, _context.World);
             Task<CountryLookup?>? countryTask = null;
             _players = new PlayerCollector(Core, _context, _log, () => countryTask is { IsCompletedSuccessfully: true } ? countryTask.Result : null);
             if (config.GeoIpEnabled)
@@ -90,11 +86,9 @@ public sealed class FinestatsPlugin(ISwiftlyCore core) : BasePlugin(core)
             new RoundCollector(Core, _context).Subscribe(_hooks);
             new CombatCollector(Core, _context, _players).Subscribe(_hooks);
             new ObjectiveCollector(_context, _players).Subscribe(_hooks);
-            Core.Event.OnMapLoad += MapLoaded;
-            Core.Event.OnMapUnload += MapUnloaded;
-            _mapSubscribed = true;
+
             _context.Emit("collector_start", new LifecycleEvent("load", hotReload));
-            SchedulePlayerBootstrap();
+            ScheduleWorldActivation();
             if (config.ChatCommandsEnabled)
             {
                 _chatCommands = new StatsChatCommands(Core, _players, _context, config, store);
@@ -118,7 +112,7 @@ public sealed class FinestatsPlugin(ISwiftlyCore core) : BasePlugin(core)
         {
             _context!.SetMap(e.MapName);
             _context.Emit("map_start", new LifecycleEvent("map_load"));
-            SchedulePlayerBootstrap();
+            ScheduleWorldActivation();
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
@@ -126,23 +120,24 @@ public sealed class FinestatsPlugin(ISwiftlyCore core) : BasePlugin(core)
         }
     }
 
-    private void SchedulePlayerBootstrap()
+    private void ScheduleWorldActivation()
     {
-        // OnMapLoad runs during native loop initialization. Reading SessionId
-        // here can call GetServerSideClient before the server is available.
+        var context = _context!;
+        long generation = context.World.Suspend();
         _mapBootstrap.Schedule(action => Core.Scheduler.NextWorldUpdate(action), () =>
         {
-            try { _players?.Bootstrap(); }
-            catch (Exception ex) when (ex is not OutOfMemoryException)
-            {
-                _log?.CollectorError("player_bootstrap");
-            }
+            if (!ReferenceEquals(_context, context)) return;
+            context.World.Activate(generation);
+            // No bulk player enumeration: ready/game callbacks observe each
+            // player only after its native connection has been established.
         });
     }
-
     private void MapUnloaded(IOnMapUnloadEvent e)
     {
+        _context?.World.Suspend();
         _mapBootstrap.Cancel();
+        _chatCommands?.ResetForMap();
+        _connectChat?.ResetForMap();
         try
         {
             _players!.EndAll("map_change");
@@ -157,7 +152,10 @@ public sealed class FinestatsPlugin(ISwiftlyCore core) : BasePlugin(core)
 
     public override void Unload()
     {
+        _context?.World.Suspend();
         _mapBootstrap.Cancel();
+        _chatCommands?.ResetForMap();
+        _connectChat?.ResetForMap();
         try
         {
             _chatCommands?.Dispose();

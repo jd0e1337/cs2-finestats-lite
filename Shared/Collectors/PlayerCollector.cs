@@ -11,6 +11,7 @@ namespace Finestats.Collectors;
 public sealed class PlayerCollector(ISwiftlyCore core, CollectionContext context, Diagnostics log, Func<CountryLookup?>? countryLookup = null) : IDisposable
 {
     private readonly SessionRegistry _sessions = new();
+    public MapLifecycle World => context.World;
 
     public void Subscribe(GameEventSubscriptions hooks)
     {
@@ -46,13 +47,13 @@ public sealed class PlayerCollector(ISwiftlyCore core, CollectionContext context
 
     private void Connected(IOnClientConnectedEvent e) => Guard("connect", () =>
     {
-        if (!ValidSlot(e.PlayerId)) return;
+        if (!World.IsReady || !ValidSlot(e.PlayerId)) return;
         End(e.PlayerId, "slot_reused");
         var state = _sessions.Start(e.PlayerId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), false);
-        Apply(state, PlayerHelper.Observe(core.PlayerManager.GetPlayer(e.PlayerId)));
+        // Connection is not readiness. Keep a provisional managed session until
+        // PutInServer/authorization/gameplay can observe the native player safely.
         Emit("player_connect", state, "connect_attempt");
         Emit("session_start", state, "connect_attempt");
-        ReportAuthentication(state);
     });
 
     private void PutInServer(IOnClientPutInServerEvent e) => Guard("put_in_server", () =>
@@ -68,16 +69,17 @@ public sealed class PlayerCollector(ISwiftlyCore core, CollectionContext context
         // Prefer the last managed snapshot if teardown has already invalidated native state.
         var state = _sessions.Find(e.PlayerId);
         if (state is null) return;
-        var observed = PlayerHelper.Observe(core.PlayerManager.GetPlayer(e.PlayerId));
-        if (observed is not null && state.NativeSessionId == observed.NativeSessionId) Apply(state, observed);
+        // Disconnect must use the last snapshot: the native connection and
+        // controller may already have been destroyed when this callback runs.
         Emit("player_disconnect", state, "disconnect", (int)e.Reason);
         End(e.PlayerId, "disconnect", (int)e.Reason);
     });
 
-    public PlayerIdentity? ResolveSlot(int slot) => ValidSlot(slot) ? Resolve(core.PlayerManager.GetPlayer(slot)) : null;
+    public PlayerIdentity? ResolveSlot(int slot) => World.IsReady && ValidSlot(slot) ? Resolve(core.PlayerManager.GetPlayer(slot)) : null;
 
     public PlayerIdentity? Resolve(IPlayer? player)
     {
+        if (!World.IsReady) return null;
         var observed = PlayerHelper.Observe(player);
         if (observed is null || !ValidSlot(observed.Slot)) return null;
         var state = _sessions.Find(observed.Slot);
@@ -119,11 +121,6 @@ public sealed class PlayerCollector(ISwiftlyCore core, CollectionContext context
         if (!state.Player.Authenticated || state.AuthReported) return;
         state.AuthReported = true;
         Emit("player_authenticated", state, "steam_authorized");
-    }
-
-    public void Bootstrap()
-    {
-        foreach (var player in core.PlayerManager.GetAllPlayers()) Resolve(player);
     }
 
     private void End(int slot, string reason, int? disconnectReason = null)

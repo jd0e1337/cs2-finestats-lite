@@ -22,6 +22,7 @@ public sealed class ConnectChat(ISwiftlyCore core, PlayerCollector players, Lite
 
     private void Ready(IOnClientPutInServerEvent e)
     {
+        if (!players.World.IsReady) return;
         var p = core.PlayerManager.GetPlayer(e.PlayerId);
         if (p is null || p.IsFakeClient)
             return;
@@ -31,9 +32,10 @@ public sealed class ConnectChat(ISwiftlyCore core, PlayerCollector players, Lite
 
     private void Authorized(IOnClientSteamAuthorizeEvent e) => Begin(e.PlayerId);
     private void Disconnected(IOnClientDisconnectedEvent e) => _gate.Remove(e.PlayerId);
+    public void ResetForMap() => _gate.Clear();
     private void Begin(int slot)
     {
-        if (Volatile.Read(ref _disposed) != 0)
+        if (!players.World.IsReady || Volatile.Read(ref _disposed) != 0)
             return;
         var p = core.PlayerManager.GetPlayer(slot);
         if (p is null || p.IsFakeClient || !p.IsAuthorized)
@@ -44,6 +46,7 @@ public sealed class ConnectChat(ISwiftlyCore core, PlayerCollector players, Lite
         ulong native = p.SessionId;
         if (!_gate.TryBegin(slot, native, true))
             return;
+        long mapGeneration = players.World.Generation;
         var token = _stop.Token;
         _ = Task.Run(async () =>
         {
@@ -55,7 +58,7 @@ public sealed class ConnectChat(ISwiftlyCore core, PlayerCollector players, Lite
                 // connection can contribute this session's country (never a historical IP).
                 core.Scheduler.NextWorldUpdate(() =>
                 {
-                    if (Volatile.Read(ref _disposed) != 0)
+                    if (!players.World.IsCurrent(mapGeneration) || Volatile.Read(ref _disposed) != 0)
                         return;
                     var current = core.PlayerManager.GetPlayer(slot);
                     if (current is null || current.SessionId != native || !current.IsAuthorized)
@@ -84,7 +87,7 @@ public sealed class ConnectChat(ISwiftlyCore core, PlayerCollector players, Lite
                     return;
                 core.Scheduler.NextWorldUpdate(() =>
                 {
-                    if (Volatile.Read(ref _disposed) != 0)
+                    if (!players.World.IsCurrent(mapGeneration) || Volatile.Read(ref _disposed) != 0)
                         return;
                     var current = core.PlayerManager.GetPlayer(slot);
                     if (current is null || !current.IsAuthorized || current.SessionId != native)

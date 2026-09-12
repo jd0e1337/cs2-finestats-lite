@@ -18,6 +18,7 @@ if (args.Length == 2 && args[0] == "--validate-config")
 }
 int checks=0;
 void Check(bool value,string name) { if(!value) throw new Exception("FAIL: "+name); Console.WriteLine("PASS: "+name);checks++; }
+NativeLifecycleChecks.Run(Check);
 var pendingWorldUpdates = new Queue<Action>();
 var deferredBootstrap = new DeferredMapAction();
 int bootstrapCalls = 0;

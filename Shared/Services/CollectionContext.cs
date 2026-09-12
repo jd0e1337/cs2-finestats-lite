@@ -8,6 +8,7 @@ namespace Finestats.Services;
 public sealed class CollectionContext(ISwiftlyCore core, string serverId, EventQueue queue, Diagnostics log)
 {
     private long _sequence;
+    public MapLifecycle World { get; } = new();
     public Guid CollectorId { get; } = Guid.NewGuid();
     public Guid MapInstanceId { get; private set; } = Guid.NewGuid();
     public Guid MatchId { get; private set; } = Guid.NewGuid();
@@ -31,14 +32,20 @@ public sealed class CollectionContext(ISwiftlyCore core, string serverId, EventQ
         // Refresh only during gameplay callbacks. Session/lifecycle events also
         // run during map teardown, when native game rules may already be freed.
         // A managed catch cannot protect against dereferencing a stale native pointer.
-        if (data is KillEvent or HitEvent or ShotEvent or ObjectiveEvent)
+        int? tick = null;
+        if (World.IsReady && data is (KillEvent or HitEvent or ShotEvent or ObjectiveEvent or RoundEvent))
         {
+            if (Map is null)
+            {
+                try { Map = WeaponHelper.Limit(core.Engine.GlobalVars.MapName.Value, 128); }
+                catch (InvalidOperationException) { }
+            }
             try { Warmup = core.EntitySystem.GetGameRules()?.WarmupPeriod; }
             catch (InvalidOperationException) { Warmup = null; }
+            try { tick = core.Engine.GlobalVars.TickCount; }
+            catch (InvalidOperationException) { tick = null; }
         }
-        int? tick;
-        try { tick = core.Engine.GlobalVars.TickCount; }
-        catch (InvalidOperationException) { tick = null; }
+        // Lifecycle/player snapshots must remain usable after native teardown.
         var value = new StatsEvent(type, 1, serverId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             Map, Round, data, Guid.NewGuid(), CollectorId, ++_sequence, MapInstanceId, MatchId, RoundId, tick, Warmup);
         if (!queue.TryEnqueue(value)) log.Warn($"finestats: event queue full or closed; dropped total={queue.Dropped}, capacity pressure at depth={queue.Count}.");
