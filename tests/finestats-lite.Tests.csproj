@@ -4,6 +4,7 @@
     <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../Services/DeferredMapAction.cs" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
     <Compile Include="../Config/*.cs;../Storage/*.cs;../Services/SqliteStatsClient.cs;../Services/StatsCommandClient.cs;../Services/EventDispatcher.cs;../Services/ConnectionGate.cs;../Services/PlaytimeFormatter.cs" />
     <Compile Include="../Shared/Config/ChatMessages.cs;../Shared/Config/ChatColors.cs;../Shared/Events/*.cs;../Shared/Services/ScoreReceipt.cs;../Shared/Services/EventQueue.cs;../Shared/Services/Diagnostics.cs;../Shared/Services/CountryLookup.cs" />

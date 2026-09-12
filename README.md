@@ -1,7 +1,7 @@
 # cs2-finestats-lite
 
 Standalone CS2 statistics for SwiftlyS2: **SQLite inside the plugin**, without a
-website, HTTP listener, backend, Docker service or external database. Version 1.0.6.
+website, HTTP listener, backend, Docker service or external database. Version 1.0.7.
 
 Includes local player rankings, configurable scoring, bot/warmup filtering, combat
 and session counters, weapon/hitgroup statistics, English colored chat messages,

@@ -18,6 +18,26 @@ if (args.Length == 2 && args[0] == "--validate-config")
 }
 int checks=0;
 void Check(bool value,string name) { if(!value) throw new Exception("FAIL: "+name); Console.WriteLine("PASS: "+name);checks++; }
+var pendingWorldUpdates = new Queue<Action>();
+var deferredBootstrap = new DeferredMapAction();
+int bootstrapCalls = 0;
+deferredBootstrap.Schedule(pendingWorldUpdates.Enqueue, () => bootstrapCalls++);
+Check(bootstrapCalls == 0, "map load does not access players synchronously");
+pendingWorldUpdates.Dequeue()();
+Check(bootstrapCalls == 1, "player bootstrap runs at the next world update");
+deferredBootstrap.Schedule(pendingWorldUpdates.Enqueue, () => bootstrapCalls++);
+deferredBootstrap.Cancel();
+pendingWorldUpdates.Dequeue()();
+Check(bootstrapCalls == 1, "map unload cancels pending player bootstrap");
+deferredBootstrap.Schedule(pendingWorldUpdates.Enqueue, () => bootstrapCalls += 100);
+deferredBootstrap.Schedule(pendingWorldUpdates.Enqueue, () => bootstrapCalls++);
+while (pendingWorldUpdates.TryDequeue(out var update)) update();
+Check(bootstrapCalls == 2, "rapid map changes only bootstrap the latest map");
+deferredBootstrap.Schedule(pendingWorldUpdates.Enqueue, () => bootstrapCalls++);
+deferredBootstrap.Cancel();
+deferredBootstrap.Schedule(pendingWorldUpdates.Enqueue, () => bootstrapCalls += 10);
+while (pendingWorldUpdates.TryDequeue(out var update)) update();
+Check(bootstrapCalls == 12, "reload cannot run the unloaded plugin's pending bootstrap");
 var directory=Path.Combine(Path.GetTempPath(),"finestats-lite-tests-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(directory);
 var config=new StatsConfig {BackupIntervalMinutes=0,Ranking=new RankingOptions {ExcludeBots=false,MinimumKillsForLeaderboard=3}};
 config.Validate();

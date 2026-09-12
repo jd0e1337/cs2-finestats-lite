@@ -3,7 +3,7 @@
 The standalone repository was checked on Windows with the .NET 10 SDK:
 
 - Release plugin build completed successfully.
-- All 216 checks passed against temporary real SQLite databases.
+- All 221 checks passed against temporary real SQLite databases.
 - The tests do not connect to a production game server.
 
 Coverage includes local chat commands, scoring and qualification, bot/warmup
@@ -52,3 +52,11 @@ The collector now reads warmup from current game rules for each event instead
 of relying on a round-start snapshot. Native map/server startup and warmup
 transitions still require in-game verification; the reported missing first
 message was not reproduced on a live server during this investigation.
+
+## 1.0.7 map transition safety
+
+Player bootstrap is deferred from plugin/map load to the next world update.
+Pending bootstrap work is cancelled on map/plugin unload and superseded by newer
+map loads. Five regression checks cover deferred execution, cancellation, rapid
+map changes and reload. Lifecycle/session events no longer refresh native game
+rules during teardown. Live map-change validation is still required.

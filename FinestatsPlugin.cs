@@ -9,7 +9,7 @@ using SwiftlyS2.Shared.Plugins;
 
 namespace Finestats;
 
-[PluginMetadata(Id = "finestats-lite", Version = "1.0.6", Name = "finestats-lite", Author = "finestats-lite", Description = "Standalone SQLite CS2 statistics")]
+[PluginMetadata(Id = "finestats-lite", Version = "1.0.7", Name = "finestats-lite", Author = "finestats-lite", Description = "Standalone SQLite CS2 statistics")]
 public sealed class FinestatsPlugin(ISwiftlyCore core) : BasePlugin(core)
 {
     private Diagnostics? _log;
@@ -23,6 +23,7 @@ public sealed class FinestatsPlugin(ISwiftlyCore core) : BasePlugin(core)
     private ScoreChat? _scoreChat;
     private ConnectChat? _connectChat;
     private CancellationTokenSource? _countryStop;
+    private readonly DeferredMapAction _mapBootstrap = new();
     public override void Load(bool hotReload)
     {
         try
@@ -93,7 +94,7 @@ public sealed class FinestatsPlugin(ISwiftlyCore core) : BasePlugin(core)
             Core.Event.OnMapUnload += MapUnloaded;
             _mapSubscribed = true;
             _context.Emit("collector_start", new LifecycleEvent("load", hotReload));
-            _players.Bootstrap();
+            SchedulePlayerBootstrap();
             if (config.ChatCommandsEnabled)
             {
                 _chatCommands = new StatsChatCommands(Core, _players, _context, config, store);
@@ -117,7 +118,7 @@ public sealed class FinestatsPlugin(ISwiftlyCore core) : BasePlugin(core)
         {
             _context!.SetMap(e.MapName);
             _context.Emit("map_start", new LifecycleEvent("map_load"));
-            _players!.Bootstrap();
+            SchedulePlayerBootstrap();
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
@@ -125,8 +126,23 @@ public sealed class FinestatsPlugin(ISwiftlyCore core) : BasePlugin(core)
         }
     }
 
+    private void SchedulePlayerBootstrap()
+    {
+        // OnMapLoad runs during native loop initialization. Reading SessionId
+        // here can call GetServerSideClient before the server is available.
+        _mapBootstrap.Schedule(action => Core.Scheduler.NextWorldUpdate(action), () =>
+        {
+            try { _players?.Bootstrap(); }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                _log?.CollectorError("player_bootstrap");
+            }
+        });
+    }
+
     private void MapUnloaded(IOnMapUnloadEvent e)
     {
+        _mapBootstrap.Cancel();
         try
         {
             _players!.EndAll("map_change");
@@ -141,6 +157,7 @@ public sealed class FinestatsPlugin(ISwiftlyCore core) : BasePlugin(core)
 
     public override void Unload()
     {
+        _mapBootstrap.Cancel();
         try
         {
             _chatCommands?.Dispose();
