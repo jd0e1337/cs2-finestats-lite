@@ -26,8 +26,12 @@ percentage, damage, and playtime.
 
 ## Install
 
-Requires SwiftlyS2 **1.4.10** and its .NET 10 runtime. Download/build the ZIP for your
-OS (`linux-x64` or `win-x64`). Extract the included `finestats-lite` directory into
+Requires SwiftlyS2 **1.4.10** and its .NET 10 runtime. Get the framework from
+[SwiftlyS2 releases](https://github.com/swiftly-solution/swiftlys2/releases/tag/v1.4.10)
+([Linux with runtimes](https://github.com/swiftly-solution/swiftlys2/releases/download/v1.4.10/swiftlys2-linux-v1.4.10-with-runtimes.zip)).
+Download the matching plugin ZIP from [finestats-lite releases](https://github.com/jd0e1337/cs2-finestats-lite/releases/latest)
+for your OS (`linux-x64` or `win-x64`) and select the `swiftly1.4.10` variant.
+Extract the included `finestats-lite` directory into
 `addons/swiftlys2/plugins/`. Include **all** DLLs and the native SQLite library from
 the ZIP; do not copy just the plugin DLL. Restart CS2 or load the plugin with SwiftlyS2.
 

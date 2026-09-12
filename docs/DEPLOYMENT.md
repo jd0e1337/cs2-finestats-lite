@@ -1,5 +1,23 @@
 # Deployment
 
+## Upgrading SwiftlyS2 and finestats-lite together
+
+For SwiftlyS2 1.4.10, use the corresponding `swiftly1.4.10` plugin package from
+[finestats-lite releases](https://github.com/jd0e1337/cs2-finestats-lite/releases/latest).
+On Linux, the [framework package with runtimes](https://github.com/swiftly-solution/swiftlys2/releases/download/v1.4.10/swiftlys2-linux-v1.4.10-with-runtimes.zip)
+includes the required .NET runtime.
+
+Stop the server before replacing native framework libraries. Back up the existing
+framework binaries, gamedata, translations, plugins, configuration, and data.
+The framework ZIP has an outer package directory: copy from its contained
+`addons/swiftlys2` directory into the existing installation. Do not create a
+second `swiftlys2` directory inside the current one. Preserve existing config
+files, custom plugins, and statistics. Keep executable permissions on the bundled
+`dotnet` host. Install the matching finestats-lite package, then start the server
+and check framework/plugin versions, SQLite integrity, and a map transition.
+
+## Plugin installation
+
 Build the package for your server OS and installed SwiftlyS2 version as described
 in the README. The default build targets SwiftlyS2 1.4.10.
 
